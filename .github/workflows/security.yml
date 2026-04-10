@@ -83,18 +83,13 @@ jobs:
       - name: Start Juice Shop in background
         run: |
           npm start &
-          echo "Waiting for Juice Shop to start..."
-          for i in {1..24}; do
-            sleep 5
-            if curl -s http://localhost:3000 > /dev/null; then
-              echo "Juice Shop is up after $((i*5)) seconds"
-              break
-            fi
-            echo "Still waiting... ($((i*5))s)"
-          done
+          sleep 30
+
+      - name: Fix workspace permissions for ZAP
+        run: chmod a+w ${{ github.workspace }}
 
       - name: Run ZAP baseline scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: "http://localhost:3000"
-          allow_issue_creation: false
+          fail_action: false
