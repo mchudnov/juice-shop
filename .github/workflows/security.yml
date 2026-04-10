@@ -1,0 +1,92 @@
+name: Security Pipeline
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+
+  # -------------------------------------------------------
+  # LAYER 2: Secrets scan (catches anyone who bypassed hook)
+  # -------------------------------------------------------
+  gitleaks:
+    name: Secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------
+  # LAYER 3A: SAST — static code analysis
+  # -------------------------------------------------------
+  semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/javascript
+            p/nodejs
+
+  # -------------------------------------------------------
+  # LAYER 3B: Dependency and container vulnerability scan
+  # -------------------------------------------------------
+  trivy:
+    name: Dependency scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+  # -------------------------------------------------------
+  # LAYER 4: DAST — dynamic scan against running app
+  # -------------------------------------------------------
+  zap:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start Juice Shop in background
+        run: |
+          npm start &
+          sleep 30
+
+      - name: Run ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: "http://localhost:3000"
+          allow_issue_creation: false
