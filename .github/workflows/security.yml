@@ -75,7 +75,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm install
@@ -83,7 +83,7 @@ jobs:
       - name: Start Juice Shop in background
         run: |
           npm start &
-          sleep 30
+          sleep 60
 
       - name: Run ZAP baseline scan
         uses: zaproxy/action-baseline@v0.10.0
