@@ -83,7 +83,15 @@ jobs:
       - name: Start Juice Shop in background
         run: |
           npm start &
-          sleep 60
+          echo "Waiting for Juice Shop to start..."
+          for i in {1..24}; do
+            sleep 5
+            if curl -s http://localhost:3000 > /dev/null; then
+              echo "Juice Shop is up after $((i*5)) seconds"
+              break
+            fi
+            echo "Still waiting... ($((i*5))s)"
+          done
 
       - name: Run ZAP baseline scan
         uses: zaproxy/action-baseline@v0.10.0
